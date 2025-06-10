@@ -382,7 +382,7 @@ namespace WpfOpenCvApp
 
             ProgressBar.IsEnabled = true;
             ProgressBar.Minimum = 0;
-            ProgressBar.Maximum = _totalFrames;
+            ProgressBar.Maximum = _totalFrames; 
 
             Dispatcher.Invoke(() =>
             {

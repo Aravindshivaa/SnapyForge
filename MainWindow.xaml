@@ -112,10 +112,8 @@
                 </Border>
             </StackPanel>
 
-            <!-- Buttons -->
+           
             <WrapPanel Grid.Column="1" HorizontalAlignment="Left" Margin="81,0,0,0">
-               
-
                 <Button Style="{StaticResource TrendyButtonStyle}" Click="PlayVideo_Click" ToolTip="Play">
                     <TextBlock FontFamily="Segoe MDL2 Assets"
                                Text="&#xE768;"   

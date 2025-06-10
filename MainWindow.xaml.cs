@@ -23,7 +23,7 @@ namespace WpfOpenCvApp
         private int _screenshotIntervalMs = 1000;
         private int _screenshotCount = 0;
         private int _totalFrames = 0;
-        private string _videoFilePath; // ✅ Store loaded video path
+        private string _videoFilePath;
 
         private List<Mat> _screenshotQueue = new List<Mat>();
         private int _batchSize = 10;
@@ -200,7 +200,7 @@ namespace WpfOpenCvApp
 
                     try
                     {
-                        string screenshotsDir = GetScreenshotFolder(); // ✅ Uses video-based folder
+                        string screenshotsDir = GetScreenshotFolder(); 
 
                         foreach (var frame in batchToSave)
                         {
@@ -247,7 +247,7 @@ namespace WpfOpenCvApp
                 double videoDurationSeconds = totalFrames / fps;
                 double intervalSeconds = videoDurationSeconds / screenshotCount;
 
-                string screenshotsDir = GetScreenshotFolder("BatchScreenshots"); // ✅ Uses video-based folder
+                string screenshotsDir = GetScreenshotFolder("BatchScreenshots"); 
 
                 ScreenshotProgressBar.Visibility = Visibility.Visible;
                 ScreenshotProgressBar.Minimum = 0;
@@ -366,7 +366,7 @@ namespace WpfOpenCvApp
 
         private void LoadVideo(string videoFilePath)
         {
-            _videoFilePath = videoFilePath; // ✅ Set file path
+            _videoFilePath = videoFilePath; 
             _videoCapture?.Release();
             _videoCapture = new VideoCapture(videoFilePath);
 

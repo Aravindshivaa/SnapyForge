@@ -1,0 +1,8 @@
+# .gitignore for Visual Studio projects
+.vs/
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates

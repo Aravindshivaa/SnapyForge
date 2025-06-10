@@ -388,7 +388,6 @@ namespace WpfOpenCvApp
             {
                 VideoDurationText.Text = $"Duration: {TimeSpan.FromSeconds(_videoDurationInSeconds):mm\\:ss}";
             });
-
             _isPlaying = false;
             _isPaused = false;
         }

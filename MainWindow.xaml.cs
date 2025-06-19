@@ -8,10 +8,13 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
+
 
 namespace WpfOpenCvApp
 {
+
     public partial class MainWindow : System.Windows.Window
     {
         private VideoCapture _videoCapture;
@@ -24,12 +27,17 @@ namespace WpfOpenCvApp
         private int _screenshotCount = 0;
         private int _totalFrames = 0;
         private string _videoFilePath;
+        private readonly CascadeClassifier _faceCascade;
+
+
 
         private List<Mat> _screenshotQueue = new List<Mat>();
         private int _batchSize = 10;
         private Task _screenshotTask = null;
 
         private double _videoDurationInSeconds;
+
+
         private void CalculateVideoDuration()
         {
             double fps = _videoCapture.Get(VideoCaptureProperties.Fps);
@@ -77,7 +85,7 @@ namespace WpfOpenCvApp
 
                     Dispatcher.Invoke(() =>
                     {
-                        VideoDurationText.Text = $"Duration: {TimeSpan.FromSeconds(_videoDurationInSeconds):mm\\:ss}";
+                        VideoDurationText.Text = $"{TimeSpan.FromSeconds(_videoDurationInSeconds):mm\\:ss}";
                     });
                 }
                 else return;
@@ -89,8 +97,11 @@ namespace WpfOpenCvApp
             _isPlaying = true;
             _isPaused = false;
 
-            WriteableBitmap writableBitmap = new WriteableBitmap(
-                _videoCapture.FrameWidth, _videoCapture.FrameHeight, 96, 96, System.Windows.Media.PixelFormats.Bgr24, null);
+            int width = _videoCapture.FrameWidth;
+            int height = _videoCapture.FrameHeight;
+
+            var writableBitmap = new WriteableBitmap(
+                width, height, 96, 96, PixelFormats.Bgr24, null);
 
             _stopwatch.Restart();
 
@@ -122,11 +133,24 @@ namespace WpfOpenCvApp
 
                 Dispatcher.Invoke(() =>
                 {
-                    VideoDisplay.Source = writableBitmap;
+                    // Convert current frame to a BitmapSource
+                    BitmapSource bitmap = BitmapSource.Create(
+     _currentFrame.Width, _currentFrame.Height, 96, 96,
+     PixelFormats.Bgr24, null,
+     _currentFrame.Data,
+     (int)(_currentFrame.Step() * _currentFrame.Height),  // total buffer size
+     (int)_currentFrame.Step());                           // stride (bytes per row)
+
+
+                    // Update main video display and ambient background separately
+                    VideoDisplay.Source = bitmap;
+                    AmbientVideoGlow.Source = bitmap;
+
                     ProgressBar.Value = _videoCapture.Get(VideoCaptureProperties.PosFrames);
                     double currentTimeInSeconds = _videoCapture.Get(VideoCaptureProperties.PosFrames) / _videoCapture.Get(VideoCaptureProperties.Fps);
-                    CurrentTimeText.Text = $"Current Time: {TimeSpan.FromSeconds(currentTimeInSeconds):mm\\:ss}";
+                    CurrentTimeText.Text = $"{TimeSpan.FromSeconds(currentTimeInSeconds):mm\\:ss}";
                 });
+
 
                 if (_isTakingScreenshots && _stopwatch.ElapsedMilliseconds >= _screenshotIntervalMs)
                 {
@@ -134,9 +158,32 @@ namespace WpfOpenCvApp
                     _stopwatch.Restart();
                 }
 
-                await Task.Delay(33);
+                await Task.Delay(33); // ~30 FPS
             }
         }
+
+
+        private void Window_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ChangedButton == MouseButton.Left)
+                this.DragMove(); // Allows window dragging
+        }
+
+        private void Close_Click(object sender, RoutedEventArgs e)
+        {
+            this.Close();
+        }
+
+        private void Minimize_Click(object sender, RoutedEventArgs e)
+        {
+            this.WindowState = WindowState.Minimized;
+        }
+
+        private void OpenTimeFramePopup_Click(object sender, RoutedEventArgs e)
+        {
+            TimeFramePopup.IsOpen = true;
+        }
+
 
         private void PauseVideo_Click(object sender, RoutedEventArgs e)
         {
@@ -200,7 +247,7 @@ namespace WpfOpenCvApp
 
                     try
                     {
-                        string screenshotsDir = GetScreenshotFolder(); 
+                        string screenshotsDir = GetScreenshotFolder();
 
                         foreach (var frame in batchToSave)
                         {
@@ -244,10 +291,35 @@ namespace WpfOpenCvApp
                     return;
                 }
 
-                double videoDurationSeconds = totalFrames / fps;
-                double intervalSeconds = videoDurationSeconds / screenshotCount;
+                double startSeconds = 0;
+                double endSeconds = totalFrames / fps;
 
-                string screenshotsDir = GetScreenshotFolder("BatchScreenshots"); 
+                // If custom time frame popup is open, try to parse it
+                if (TimeFramePopup.IsOpen)
+                {
+                    bool validStart = TimeSpan.TryParseExact(StartTimeTextBox.Text, @"mm\:ss", null, out TimeSpan start);
+                    bool validEnd = TimeSpan.TryParseExact(EndTimeTextBox.Text, @"mm\:ss", null, out TimeSpan end);
+
+                    if (!validStart || !validEnd)
+                    {
+                        MessageBox.Show("Invalid time format. Use mm:ss.");
+                        return;
+                    }
+
+                    startSeconds = start.TotalSeconds;
+                    endSeconds = end.TotalSeconds;
+
+                    if (startSeconds >= endSeconds || endSeconds > totalFrames / fps)
+                    {
+                        MessageBox.Show("Invalid time range.");
+                        return;
+                    }
+                }
+
+                double captureDuration = endSeconds - startSeconds;
+                double intervalSeconds = captureDuration / screenshotCount;
+
+                string screenshotsDir = GetScreenshotFolder("BatchScreenshots");
 
                 ScreenshotProgressBar.Visibility = Visibility.Visible;
                 ScreenshotProgressBar.Minimum = 0;
@@ -256,7 +328,9 @@ namespace WpfOpenCvApp
 
                 for (int i = 0; i < screenshotCount; i++)
                 {
-                    int frameNumber = (int)(i * intervalSeconds * fps);
+                    double captureTime = startSeconds + (i * intervalSeconds);
+                    int frameNumber = (int)(captureTime * fps);
+
                     if (frameNumber >= totalFrames)
                         continue;
 
@@ -287,8 +361,10 @@ namespace WpfOpenCvApp
             finally
             {
                 ScreenshotProgressBar.Visibility = Visibility.Collapsed;
+                TimeFramePopup.IsOpen = false; // Close popup after use
             }
         }
+
 
         private static readonly Regex _onlyNumbers = new Regex("^[0-9]+$");
 
@@ -328,16 +404,6 @@ namespace WpfOpenCvApp
             MessageBox.Show("Bulk screenshot capture stopped!");
         }
 
-        public class RelayCommand : ICommand
-        {
-            private readonly Action<object> _execute;
-            public RelayCommand(Action<object> execute) => _execute = execute;
-            public bool CanExecute(object parameter) => true;
-            public event EventHandler CanExecuteChanged;
-            public void Execute(object parameter) => _execute(parameter);
-        }
-
-
         private void Window_DragEnter(object sender, DragEventArgs e)
         {
             if (e.Data.GetDataPresent(DataFormats.FileDrop))
@@ -366,7 +432,7 @@ namespace WpfOpenCvApp
 
         private void LoadVideo(string videoFilePath)
         {
-            _videoFilePath = videoFilePath; 
+            _videoFilePath = videoFilePath;
             _videoCapture?.Release();
             _videoCapture = new VideoCapture(videoFilePath);
 
@@ -382,7 +448,7 @@ namespace WpfOpenCvApp
 
             ProgressBar.IsEnabled = true;
             ProgressBar.Minimum = 0;
-            ProgressBar.Maximum = _totalFrames; 
+            ProgressBar.Maximum = _totalFrames;
 
             Dispatcher.Invoke(() =>
             {
@@ -402,5 +468,7 @@ namespace WpfOpenCvApp
                 _videoCapture.Set(VideoCaptureProperties.PosFrames, ProgressBar.Value);
             }
         }
+
+
     }
 }

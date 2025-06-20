@@ -11,7 +11,7 @@
         AllowDrop="True"
         DragEnter="Window_DragEnter"
         Drop="Window_Drop"
-        MouseDown="Window_MouseDown">
+        MouseLeftButtonDown="Window_MouseLeftButtonDown">
 
     <Window.Resources>
         <!-- ✨ Stylish button with glow -->
@@ -105,6 +105,30 @@
             </Setter>
         </Style>
 
+        <Style TargetType="Button" x:Key="TitleBarButtonStyle">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="8">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#333"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#555"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+
     </Window.Resources>
 
     <Border Background="#1F1F1F" CornerRadius="12" BorderBrush="#444" BorderThickness="1">
@@ -117,15 +141,63 @@
             </Grid.RowDefinitions>
 
             <!-- 🪟 Custom Title Bar -->
-            <DockPanel Grid.Row="0" LastChildFill="True" Background="#1F1F1F">
-                <TextBlock Text="SnapyForge" DockPanel.Dock="Left" Foreground="White" VerticalAlignment="Center" Margin="10,0" FontWeight="Bold"/>
+            <DockPanel Grid.Row="0" LastChildFill="True">
+                <!-- Title Bar Background -->
+                <Border Background="#1F1F1F" CornerRadius="10,10,0,0">
+                    <Grid>
+                        <!-- App Title -->
+                        <TextBlock Text="SnapyForge"
+                       FontWeight="SemiBold"
+                       FontSize="16"
+                       Foreground="#FFFFFF"
+                       VerticalAlignment="Center"
+                       Margin="16,0,0,0"
+                      MouseLeftButtonDown="Window_MouseLeftButtonDown"/>
 
-                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button Content="–" Width="32" Height="32" Margin="2" Click="Minimize_Click"/>
-                    <Button Content="×" Width="32" Height="32" Margin="2" Click="Close_Click"/>
-                </StackPanel>
+                        <!-- Window Control Buttons -->
+                        <StackPanel Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        Margin="0,0,8,0">
+
+                            <!-- Minimize -->
+                            <Button Style="{StaticResource TitleBarButtonStyle}"
+        Width="32" Height="32"
+        ToolTip="Minimize"
+        Click="Minimize_Click"
+        Cursor="Hand"
+        Background="Transparent">
+                                <Path Data="M 0 0 L 10 0"
+          Stroke="White"
+          StrokeThickness="2"
+          HorizontalAlignment="Center"
+          VerticalAlignment="Center"/>
+                            </Button>
+                            <!-- Close -->
+                            <Button Style="{StaticResource TitleBarButtonStyle}"
+        Width="32" Height="32"
+        ToolTip="Close"
+        Click="Close_Click"
+        Cursor="Hand"
+        Background="Transparent">
+                                <Path Data="M 0 0 L 10 10 M 0 10 L 10 0"
+          Stroke="White"
+          StrokeThickness="2"
+          HorizontalAlignment="Center"
+          VerticalAlignment="Center"/>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+                </Border>
             </DockPanel>
 
+
+            <Grid x:Name="LoadingOverlay" Background="#66000000" Visibility="Collapsed" Panel.ZIndex="100">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <ProgressBar IsIndeterminate="True" Width="150" Height="6"/>
+                    <TextBlock Text="Loading..." Foreground="White" Margin="0,10,0,0" FontSize="14"/>
+                </StackPanel>
+            </Grid>
 
             <!-- 🌟 Ambient + Video Layer -->
             <Grid Grid.Row="1" ClipToBounds="True">
@@ -141,6 +213,18 @@
                         <ScaleTransform ScaleX="1.15" ScaleY="1.15"/>
                     </Image.RenderTransform>
                 </Image>
+
+                <Border x:Name="ToastNotification"
+        Background="#333"
+        CornerRadius="8"
+        Padding="10"
+        HorizontalAlignment="Center"
+        VerticalAlignment="Bottom"
+        Margin="0,0,0,30"
+        Opacity="0"
+        Visibility="Collapsed">
+                    <TextBlock x:Name="ToastMessage" Foreground="White" FontWeight="Bold"/>
+                </Border>
 
                 <Border Background="#252526" BorderThickness="0" CornerRadius="14" Padding="2">
                     <Border.Effect>
@@ -158,32 +242,53 @@
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Grid.Column="0" Orientation="Vertical" HorizontalAlignment="Left">
-                    <TextBlock Text="Screenshot Count" Foreground="#AAAAAA" FontSize="13" Margin="0,0,0,5"/>
-                    <Border Background="#2D2D30" CornerRadius="10" Padding="6" Width="130">
-                        <TextBox x:Name="ScreenshotCountTextBox"
-                                 Text="50"
-                                 Background="Transparent"
-                                 Foreground="White"
-                                 BorderThickness="0"
-                                 HorizontalContentAlignment="Center"
-                                 VerticalContentAlignment="Center"
-                                 FontSize="14"
-                                 CaretBrush="White"
-                                 PreviewTextInput="ScreenshotCountTextBox_PreviewTextInput"
-                                 DataObject.Pasting="ScreenshotCountTextBox_Pasting"
-                                 ToolTip="Enter screenshot count"/>
+                    <TextBlock Text="Count"
+               Foreground="#CCCCCC"
+               FontSize="13"
+               Margin="0,0,0,6"
+               FontWeight="SemiBold"/>
+
+                    <Border Background="#2D2D30"
+            CornerRadius="10"
+            Padding="4"
+            Width="150"
+            BorderBrush="#444"
+            BorderThickness="1">
+                        <Grid>
+                            <TextBox x:Name="ScreenshotCountTextBox"
+                     Text="50"
+                     Background="Transparent"
+                     Foreground="White"
+                     BorderThickness="0"
+                     FontSize="14"
+                     HorizontalContentAlignment="Center"
+                     VerticalContentAlignment="Center"
+                     CaretBrush="White"
+                     ToolTip="Enter screenshot count"
+                     PreviewTextInput="ScreenshotCountTextBox_PreviewTextInput"
+                     DataObject.Pasting="ScreenshotCountTextBox_Pasting"/>
+
+                            <!-- Optional: Underline Glow Effect on Focus -->
+                            <Border x:Name="FocusGlow"
+                    Height="2"
+                    Background="#007ACC"
+                    VerticalAlignment="Bottom"
+                    Visibility="Collapsed"/>
+                        </Grid>
                     </Border>
                 </StackPanel>
 
+
                 <WrapPanel Grid.Column="1" Margin="50,0,0,0" VerticalAlignment="Top">
                     <Button Style="{StaticResource TrendyButtonStyle}" Click="PlayVideo_Click" ToolTip="Play">
-                        <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE768;" FontSize="22"/>
+                        <Path Width="20" Height="20" Fill="White" Stretch="Uniform" Data="M3,2 L17,10 L3,18 Z"/>
                     </Button>
                     <Button Style="{StaticResource TrendyButtonStyle}" Click="PauseVideo_Click" ToolTip="Pause">
-                        <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE769;" FontSize="22"/>
+                        <Path Width="20" Height="20" Fill="White" Stretch="Uniform"
+                              Data="M4,2 H8 V18 H4 Z M12,2 H16 V18 H12 Z"/>
                     </Button>
                     <Button Style="{StaticResource TrendyButtonStyle}" Click="StopVideo_Click" ToolTip="Stop" Background="#D32F2F">
-                        <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE15B;" FontSize="22"/>
+                        <Path Width="20" Height="20" Fill="White" Stretch="Uniform" Data="M4,4 H16 V16 H4 Z"/>
                     </Button>
                     <Button Style="{StaticResource TrendyButtonStyle}" Click="StartTakingScreenshots_Click" ToolTip="Start Screenshot">
                         <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE710;" FontSize="22"/>
@@ -192,16 +297,22 @@
                         <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE15B;" FontSize="22"/>
                     </Button>
                     <Button Style="{StaticResource TrendyButtonStyle}" Click="DynamicBatchScreenshot_Click" ToolTip="Batch Screenshot">
-                        <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE762;" FontSize="22"/>
+                        <Path Width="20" Height="20" Fill="White" Stretch="Uniform"
+          Data="M3,5 H21 V7 H3 Z M3,9 H21 V11 H3 Z M3,13 H21 V15 H3 Z"/>
                     </Button>
-                    <Button Style="{StaticResource TrendyButtonStyle}" Click="OpenTimeFramePopup_Click" ToolTip="Custom Timeframe">
-                        <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE823;" FontSize="20"/>
+                    <Button Style="{StaticResource TrendyButtonStyle}"  Click="OpenTimeFramePopup_Click" ToolTip="Custom Timeframe">
+                        <Path Width="20" Height="20" Fill="White" Stretch="Uniform"
+                         Data="M12,2 A10,10 0 1,0 12,22 A10,10 0 1,0 12,2 Z M11,6 H13 V13 H18 V15 H11 Z"/>
                     </Button>
 
 
 
 
                 </WrapPanel>
+
+
+
+
             </Grid>
 
             <!-- 🕓 Progress -->
@@ -253,6 +364,7 @@
                     <StackPanel>
                         <TextBlock Text="Start Time (mm:ss)" Foreground="White" Margin="0,0,0,5"/>
                         <TextBox x:Name="StartTimeTextBox"
+                                 TextChanged="TimeTextBox_TextChanged"
                          Text="00:00"
                          FontSize="14"
                          Padding="4"
@@ -263,6 +375,7 @@
                          Margin="0,0,0,10"/>
                         <TextBlock Text="End Time (mm:ss)" Foreground="White" Margin="0,0,0,5"/>
                         <TextBox x:Name="EndTimeTextBox"
+                                 TextChanged="TimeTextBox_TextChanged"
                          Text="00:30"
                          FontSize="14"
                          Padding="4"

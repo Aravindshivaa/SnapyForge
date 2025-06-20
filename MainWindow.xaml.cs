@@ -7,9 +7,11 @@ using System.IO;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Media.Animation;
 
 
 namespace WpfOpenCvApp
@@ -163,11 +165,25 @@ namespace WpfOpenCvApp
         }
 
 
-        private void Window_MouseDown(object sender, MouseButtonEventArgs e)
+        private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            if (e.ChangedButton == MouseButton.Left)
-                this.DragMove(); // Allows window dragging
+            try
+            {
+                if (e.ClickCount == 2)
+                {
+                    WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+                }
+                else
+                {
+                    DragMove();
+                }
+            }
+            catch (InvalidOperationException)
+            {
+                // Optional: Log or handle if needed
+            }
         }
+
 
         private void Close_Click(object sender, RoutedEventArgs e)
         {
@@ -265,6 +281,58 @@ namespace WpfOpenCvApp
                 }
             }
         }
+
+        private bool IsValidTimeFormat(string input)
+        {
+            return Regex.IsMatch(input, @"^([0-5]?\d):([0-5]\d)$");
+        }
+
+        private void ShowLoading(bool show)
+        {
+            LoadingOverlay.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        private void TimeTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            var textBox = sender as TextBox;
+            if (!IsValidTimeFormat(textBox.Text))
+            {
+                textBox.BorderBrush = Brushes.Red;
+                ShowToast("Time must be in mm:ss format");
+            }
+            else
+            {
+                textBox.ClearValue(Border.BorderBrushProperty);
+            }
+        }
+
+
+        private async void ShowToast(string message)
+        {
+            ToastMessage.Text = message;
+            ToastNotification.Visibility = Visibility.Visible;
+
+            var fadeIn = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(300));
+            ToastNotification.BeginAnimation(OpacityProperty, fadeIn);
+
+            await Task.Delay(2500);
+
+            var fadeOut = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(300));
+            fadeOut.Completed += (s, e) => ToastNotification.Visibility = Visibility.Collapsed;
+            ToastNotification.BeginAnimation(OpacityProperty, fadeOut);
+        }
+
+        private void ScreenshotCountTextBox_GotFocus(object sender, RoutedEventArgs e)
+        {
+            FocusGlow.Visibility = Visibility.Visible;
+        }
+
+        private void ScreenshotCountTextBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            FocusGlow.Visibility = Visibility.Collapsed;
+        }
+
+
 
         private async void DynamicBatchScreenshot_Click(object sender, RoutedEventArgs e)
         {
